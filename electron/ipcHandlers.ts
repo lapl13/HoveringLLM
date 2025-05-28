@@ -8,6 +8,19 @@ import { configHelper } from "./ConfigHelper"
 export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
   console.log("Initializing IPC handlers")
 
+  // Add this inside initializeIpcHandlers in electron/ipcHandlers.ts
+ipcMain.handle("send-llm-prompt", async (_event, prompt: string, imagePaths: string[]) => { // Added imagePaths
+    console.log("IPC: Received LLM prompt with images:", prompt, imagePaths);
+    if (deps.processingHelper) {
+        // Pass imagePaths to the helper
+        const result = await deps.processingHelper.getLLMResponse(prompt, imagePaths);
+        // Decide if you want to delete images after sending them. If so:
+        // imagePaths.forEach(path => deps.deleteScreenshot(path));
+        return result;
+    }
+    return { success: false, error: "Processing helper not available." };
+});
+
   // Configuration handlers
   ipcMain.handle("get-config", () => {
     return configHelper.loadConfig();

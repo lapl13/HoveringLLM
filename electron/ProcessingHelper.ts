@@ -9,6 +9,7 @@ import { OpenAI } from "openai"
 import { configHelper } from "./ConfigHelper"
 import Anthropic from '@anthropic-ai/sdk';
 
+
 // Interface for Gemini API requests
 interface GeminiMessage {
   role: string;
@@ -43,12 +44,79 @@ interface AnthropicMessage {
     };
   }>;
 }
+async function imageToBase64(filePath: string): Promise<string | null> {
+    try {
+        const data = await fs.promises.readFile(filePath);
+        return data.toString('base64');
+    } catch (error) {
+        console.error(`Error converting image ${filePath} to base64:`, error);
+        return null;
+    }
+}
 export class ProcessingHelper {
   private deps: IProcessingHelperDeps
   private screenshotHelper: ScreenshotHelper
   private openaiClient: OpenAI | null = null
   private geminiApiKey: string | null = null
   private anthropicClient: Anthropic | null = null
+
+  
+  // Add this method inside the ProcessingHelper class in electron/ProcessingHelper.ts
+public async getLLMResponse(prompt: string, imagePaths: string[] = []): Promise<{ success: boolean; data?: string; error?: string }> {
+    const config = configHelper.loadConfig();
+    const provider = config.apiProvider;
+    const model = config.solutionModel; // Use a vision-capable model
+
+    this.initializeAIClient();
+    // ... (Add client initialization checks as before) ...
+
+    try {
+        const imageContents = [];
+        for (const path of imagePaths) {
+            const base64 = await imageToBase64(path); // Use the helper
+            if (base64) {
+                // --- Format for OpenAI Vision ---
+                if (provider === 'openai') {
+                     imageContents.push({
+                        type: "image_url" as const,
+                        image_url: { url: `data:image/png;base64,${base64}` }
+                     });
+                }
+                // --- Add formatting for Gemini / Anthropic here ---
+                // Example Gemini:
+                // else if (provider === 'gemini') {
+                //     imageContents.push({
+                //         inlineData: { mimeType: "image/png", data: base64 }
+                //     });
+                // }
+            }
+        }
+
+        let responseContent = "Error: LLM provider not supported.";
+
+        // --- OpenAI Example (Multimodal) ---
+        if (provider === "openai" && this.openaiClient) {
+            const messages: any = [{
+                role: "user",
+                content: [ { type: "text", text: prompt }, ...imageContents ]
+            }];
+
+            const response = await this.openaiClient.chat.completions.create({
+                model: model || "gpt-4o",
+                messages: messages,
+                temperature: 0.7,
+            });
+            responseContent = response.choices[0].message.content ?? "No response.";
+        }
+        // --- Add Gemini / Anthropic Multimodal calls here ---
+
+        return { success: true, data: responseContent };
+
+    } catch (error: any) {
+        console.error("LLM interaction error:", error);
+        return { success: false, error: error.message || "Failed to get LLM response." };
+    }
+}
 
   // AbortControllers for API requests
   private currentProcessingAbortController: AbortController | null = null

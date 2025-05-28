@@ -26,6 +26,11 @@ export const PROCESSING_EVENTS = {
 console.log("Preload script is running")
 
 const electronAPI = {
+
+  // Add this line inside the electronAPI object in electron/preload.ts
+sendLLMPrompt: (prompt: string, imagePaths: string[]): Promise<{ success: boolean; data?: string; error?: string }> =>
+    ipcRenderer.invoke("send-llm-prompt", prompt, imagePaths),
+
   // Original methods
   openSubscriptionPortal: async (authData: { id: string; email: string }) => {
     return ipcRenderer.invoke("open-subscription-portal", authData)

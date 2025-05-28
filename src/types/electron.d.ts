@@ -1,4 +1,8 @@
 export interface ElectronAPI {
+
+  // Add this inside the ElectronAPI interface in src/types/electron.d.ts
+sendLLMPrompt: (prompt: string, imagePaths: string[]) => Promise<{ success: boolean; data?: string; error?: string }>;
+
   // Original methods
   openSubscriptionPortal: (authData: {
     id: string
